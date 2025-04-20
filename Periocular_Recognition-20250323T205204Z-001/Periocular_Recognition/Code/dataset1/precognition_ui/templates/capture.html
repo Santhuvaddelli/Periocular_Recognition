@@ -1,0 +1,62 @@
+<!-- Save this as capture.html in your templates directory -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Capture Image</title>
+    <style>
+        video, canvas {
+            display: block;
+            margin: 0 auto;
+        }
+        #capture-button {
+            display: block;
+            margin: 10px auto;
+        }
+        #result {
+            text-align: center;
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+<body>
+    <h1 style="text-align:center;">Capture Image for Periocular Recognition</h1>
+    <video id="video" width="640" height="480" autoplay></video>
+    <button id="capture-button">Capture Photo</button>
+    <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
+    <div id="result"></div>
+    <script>
+        // Access the user's webcam
+        const video = document.getElementById('video');
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => { video.srcObject = stream; })
+            .catch(err => { console.error("Error accessing webcam: " + err); });
+
+        const captureButton = document.getElementById('capture-button');
+        const canvas = document.getElementById('canvas');
+        const resultDiv = document.getElementById('result');
+
+        captureButton.addEventListener('click', () => {
+            // Draw the current frame from the video onto the canvas
+            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+            // Stop the video stream
+            video.srcObject.getTracks().forEach(track => track.stop());
+            // Get the image data from the canvas
+            const dataUrl = canvas.toDataURL('image/jpeg');
+            // Send the image data to the server
+            fetch('/predict_from_camera', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'image=' + encodeURIComponent(dataUrl)
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Display the prediction result
+                resultDiv.innerHTML = '<p>Predicted Person: ' + data.result + '</p>';
+            })
+            .catch(err => {
+                console.error('Error:', err);
+            });
+        });
+    </script>
+</body>
+</html>
